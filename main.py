@@ -1,13 +1,78 @@
 
+
+from typing import Tuple, List, Union
+from typing_extensions import TypeAlias
+
 from pathlib import Path
 
 from collections import Counter
-import pickle
 
 import numpy as np
 
 
-def compress(text: str, iterations: int = 10000):
+array: TypeAlias = np.ndarray
+
+array1Du8: TypeAlias = array
+array1Du16: TypeAlias = array
+
+array1Di8: TypeAlias = array
+array1Di16: TypeAlias = array
+
+array2Du8: TypeAlias = array
+array2Du16: TypeAlias = array
+
+array2Di8: TypeAlias = array
+array2Di16: TypeAlias = array
+
+
+def arrays_unsqueeze(ars: List[Union[array1Di16, Tuple[array1Di16, array1Du8]]]) -> List[Union[array1Di16, array1Du8]]:
+    res = []
+    for r in ars:
+        if isinstance(r, tuple):
+            res.extend(r)
+        else:
+            res.append(r)
+    return res
+
+
+def arr_down_size(arr: array1Di16) -> List[Union[array1Di16, Tuple[array1Di16, array1Du8]]]:
+
+    result = []
+
+    i = 0
+    max_index = arr.size - 1
+
+    while True:
+        s = set()
+        k = i
+
+        while k <= max_index and len(s) <= 255:
+            s.add(arr[k])
+            k += 1
+
+            # if len(s) > 30 and len(s) > (k - i) // 2 - 2:  # no sense to continue ?
+            #     break
+
+        if s:
+
+            if len(s) < (k - i) / 2:
+                values = np.array(sorted(s), dtype=np.int16)
+                i16_to_u8 = {v: i for i, v in enumerate(values)}
+                _arr = np.array([i16_to_u8[v] for v in arr[i: k]], dtype=np.uint8)
+
+                result.append((values, _arr))
+            else:
+                result.append(arr[i: k].astype(np.int16))
+
+            i = k
+        else:
+            break
+
+    return result
+
+
+
+def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, array1Di16, array1Di16]:
 
     symbols = ''.join(k for k, _ in Counter(text).most_common())
 
@@ -64,7 +129,7 @@ def int_to_bytes(v: int):
 
 
 if __name__ == '__main__':
-    ss, nm, rr = compress(
+    ss, nm, rr = text_to_table_and_map(
         # 'curl --proxy http://localhost:8051 https://www.baidu.com --include --verbose'
         Path('paths.yaml').read_text(encoding='utf-8')
     )
@@ -77,6 +142,21 @@ if __name__ == '__main__':
     )
 
     print(Path('res.npz').stat().st_size)
+
+
+    nm_z = arr_down_size(nm)
+    rr_z = arr_down_size(rr)
+
+    np.savez_compressed(
+        'res2.npz',
+        *arrays_unsqueeze(nm_z), *arrays_unsqueeze(rr_z),
+        symbols=np.array([ss]),
+    )
+    print(Path('res2.npz').stat().st_size)
+
+
+
+
     # txt = '&'.join(
     #     f"{k}${('' if isinstance(v1, int) else '.') + str(v1)}${('' if isinstance(v2, int) else '.') + str(v2)}"
     #     for k, (v1, v2) in tb
