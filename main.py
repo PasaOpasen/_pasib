@@ -136,11 +136,15 @@ def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, List
         n_maps.append(n_map)
 
         total_maps = sum(map(len, n_maps))
-        size = ssize + (total_maps + len(arr)) * 2
+        size = ssize + additional_size + (total_maps + len(arr)) * 2
 
         uniqs, counts = np.unique(arr, return_counts=True)
 
-        print(f"it = {iterations}, size = {size} ({ssize} + 2 * ({total_maps} + {arr.size})), unique = {uniqs.size}")
+        print(
+            f"it = {iterations}, "
+            f"size = {size} ({ssize} + {additional_size} + 2 * ({total_maps} + {arr.size})), "
+            f"unique = {uniqs.size}"
+        )
 
         if (counts < 6).all():
             break
@@ -148,16 +152,9 @@ def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, List
         if iterations < 2:
             break
 
-        center = arr.size // 2
-        arr = np.array(
-            sum(
-                [[a, b] for a, b in zip(arr[:center], arr[center:])], []
-            ) + (
-                [arr[center]] if arr.size % 2 else []
-            )
-        )
+        arr = arr[np.random.permutation(arr.size)]
         iterations -= 1
-
+        additional_size += 2 * 2
 
 
     return symbols, n_maps, arr.astype(np.int16)
