@@ -119,6 +119,7 @@ def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, List
 
     symbols = ''.join(k for k, _ in Counter(text).most_common())
     ssize = len(symbols.encode('utf8'))
+    additional_size = 0
 
     s_map = {k: i for i, k in enumerate(symbols, 1)}
 
@@ -136,9 +137,10 @@ def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, List
 
         total_maps = sum(map(len, n_maps))
         size = ssize + (total_maps + len(arr)) * 2
-        print(f"it = {iterations}, size = {size} ({ssize} + 2 * ({total_maps} + {arr.size}))")
 
         uniqs, counts = np.unique(arr, return_counts=True)
+
+        print(f"it = {iterations}, size = {size} ({ssize} + 2 * ({total_maps} + {arr.size})), unique = {uniqs.size}")
 
         if (counts < 6).all():
             break
