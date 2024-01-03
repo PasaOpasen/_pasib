@@ -1,6 +1,6 @@
 
 
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Optional
 from typing_extensions import TypeAlias
 
 from pathlib import Path
@@ -71,21 +71,15 @@ def arr_down_size(arr: array1Di16) -> List[Union[array1Di16, Tuple[array1Di16, a
     return result
 
 
-
-def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, array1Di16, array1Di16]:
-
-    symbols = ''.join(k for k, _ in Counter(text).most_common())
-
-    s_map = {k: i for i, k in enumerate(symbols, 1)}
-
-    arr = np.array(
-        [s_map[s] for s in text]
-    )
+def get_array_pair_map(
+    arr: array1Di16,
+    start_label: int,
+    max_iterations: int
+) -> Tuple[List[int], array1Di16, int]:
 
     n_map = []
-    s_count = len(symbols) + 1
 
-    for k in range(s_count, s_count + iterations):
+    for k in range(start_label, start_label + max_iterations):
         if arr.size < 2:
             break
 
@@ -118,9 +112,53 @@ def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, arra
 
         arr = _arr[:j+1]
 
-    print(f"iterations = {k - s_count}")
+    return n_map, arr, k - start_label + 1
 
-    return symbols, np.array(n_map).astype(np.int16), arr.astype(np.int16)
+
+def text_to_table_and_map(text: str, iterations: int = 10000) -> Tuple[str, List[List[int]], array1Di16]:
+
+    symbols = ''.join(k for k, _ in Counter(text).most_common())
+    ssize = len(symbols.encode('utf8'))
+
+    s_map = {k: i for i, k in enumerate(symbols, 1)}
+
+    arr = np.array(
+        [s_map[s] for s in text]
+    )
+
+    n_maps = []
+    start_label = len(symbols) + 1
+
+    while True:
+        n_map, arr, done = get_array_pair_map(arr, start_label, iterations)
+        iterations -= done
+        n_maps.append(n_map)
+
+        total_maps = sum(map(len, n_maps))
+        size = ssize + (total_maps + len(arr)) * 2
+        print(f"it = {iterations}, size = {size} ({ssize} + 2 * ({total_maps} + {arr.size}))")
+
+        uniqs, counts = np.unique(arr, return_counts=True)
+
+        if (counts < 6).all():
+            break
+
+        if iterations < 2:
+            break
+
+        center = arr.size // 2
+        arr = np.array(
+            sum(
+                [[a, b] for a, b in zip(arr[:center], arr[center:])], []
+            ) + (
+                [arr[center]] if arr.size % 2 else []
+            )
+        )
+        iterations -= 1
+
+
+
+    return symbols, n_maps, arr.astype(np.int16)
 
 
 def int_to_bytes(v: int):
